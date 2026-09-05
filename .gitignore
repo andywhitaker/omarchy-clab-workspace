@@ -1,5 +1,62 @@
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
-.DS_Store
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing and type checking
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
 *~
+*.patch
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Logs and runtime dumps
+*.log
+*.tmp
+*.pid
+
+# Containerlab and local user lab/settings files
+settings.json
+local-settings.json
+clab-*/
+topology-data.json
+*.annotations.json
+*.annotations.yaml
+*.clab.yml
+*.clab.yaml
