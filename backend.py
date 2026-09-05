@@ -70,11 +70,20 @@ def get_default_action(node_name, kind, image, ipv4, ipv6):
             "default_url": f"http://{clean_ip}" if clean_ip else "http://localhost"
         }
 
-    # General Linux / Docker containers
+    # Linux containers
+    if kind_lower == "linux":
+        return {
+            "default_app": "terminal",
+            "default_command": f"docker exec -it {node_name} bash",
+            "default_url": f"http://{clean_ip}" if clean_ip else "http://localhost"
+        }
+
+    # All other device types use SSH
+    target_host = clean_ip if clean_ip else node_name
     return {
         "default_app": "terminal",
-        "default_command": f"docker exec -it {node_name} bash",
-        "default_url": f"http://{clean_ip}" if clean_ip else "http://localhost"
+        "default_command": f"ssh -o StrictHostKeyChecking=no admin@{target_host}",
+        "default_url": f"https://{target_host}"
     }
 
 def get_topologies():

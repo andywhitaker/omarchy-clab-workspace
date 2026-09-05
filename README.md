@@ -30,7 +30,8 @@ It provides a status bar widget, an interactive graphical topology visualizer in
   - Automatic defaults based on device type:
     - **Nokia SR Linux**: Terminal with SSH connection (`ssh -l admin <ip>`).
     - **FRRouting (FRR)**: Terminal with vtysh (`docker exec -it <node> vtysh`).
-    - **Linux / Other**: Terminal with Docker exec interactive bash shell.
+    - **Linux**: Terminal with Docker exec interactive bash shell (`docker exec -it <node> bash`).
+    - **Other Device Types**: Terminal with SSH connection (`ssh -l admin <ip>`).
   - Built-in **Settings** tab to customize each node:
     - Choose application type: **Terminal** or **Web Browser**.
     - Customize target command (e.g. `ssh`, `vtysh`, `telnet`, `docker exec`) or Web UI URL (e.g. `http://localhost:8080`).
