@@ -13,7 +13,6 @@ import json
 import subprocess
 import shutil
 import re
-import shlex
 import time
 
 SETTINGS_DIR = os.path.expanduser("~/.config/omarchy/containerlab")

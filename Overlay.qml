@@ -2,14 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
 Item {
     id: root
 
-    property string omarchyPath: Quickshell.env("OMARCHY_PATH")
     readonly property string pluginId: "awhitaker.clab-workspace"
     readonly property string pluginDir: {
         var base = Qt.resolvedUrl(".").toString();
