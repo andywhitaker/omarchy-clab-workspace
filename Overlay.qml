@@ -10,7 +10,15 @@ Item {
     id: root
 
     property string omarchyPath: Quickshell.env("OMARCHY_PATH")
-    property string pluginDir: Quickshell.env("HOME") + "/.config/omarchy/plugins/awhitaker.containerlab"
+    readonly property string pluginId: "awhitaker.clab-workspace"
+    readonly property string pluginDir: {
+        var base = Qt.resolvedUrl(".").toString();
+        base = base.replace(/^file:\/\//, "");
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length - 1);
+        }
+        return base || (Quickshell.env("HOME") + "/.config/omarchy/plugins/awhitaker.clab-workspace");
+    }
     property string backendScript: pluginDir + "/backend.py"
 
     property var shell: null
@@ -49,7 +57,7 @@ Item {
 
     function requestClose() {
         if (root.shell && typeof root.shell.hide === "function") {
-            root.shell.hide("awhitaker.containerlab");
+            root.shell.hide(root.pluginId);
         } else {
             root.close();
         }
@@ -159,7 +167,7 @@ Item {
         onVisibleChanged: {
             root.opened = visible;
             if (!visible && !root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
-                root.shell.hide("awhitaker.containerlab");
+                root.shell.hide(root.pluginId);
             }
         }
 

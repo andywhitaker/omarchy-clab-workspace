@@ -18,6 +18,7 @@ import time
 
 SETTINGS_DIR = os.path.expanduser("~/.config/omarchy/containerlab")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
+PLUGIN_ID = "awhitaker.clab-workspace"
 
 def load_settings():
     if os.path.isfile(SETTINGS_FILE):
@@ -524,7 +525,7 @@ def smart_toggle():
         # Switch into special:clab
         subprocess.run(["hyprctl", "dispatch", "hl.dsp.workspace.toggle_special(\"clab\")"])
         # Ensure the topology window is summoned/visible
-        subprocess.run(["omarchy-shell", "shell", "summon", "awhitaker.containerlab", "{}"])
+        subprocess.run(["omarchy-shell", "shell", "summon", PLUGIN_ID, "{}"])
         return {"status": "ok", "action": "entered_workspace_and_shown"}
 
     # We are already inside special:clab
@@ -535,11 +536,11 @@ def smart_toggle():
             return {"status": "ok", "action": "exited_workspace"}
         else:
             # Terminals are running; hide the floating topology window so terminals are unobstructed
-            subprocess.run(["omarchy-shell", "shell", "hide", "awhitaker.containerlab"])
+            subprocess.run(["omarchy-shell", "shell", "hide", PLUGIN_ID])
             return {"status": "ok", "action": "hidden_topology"}
     else:
         # Topology window is hidden; summon it back in front
-        subprocess.run(["omarchy-shell", "shell", "summon", "awhitaker.containerlab", "{}"])
+        subprocess.run(["omarchy-shell", "shell", "summon", PLUGIN_ID, "{}"])
         return {"status": "ok", "action": "shown_topology"}
 
 def main():

@@ -4,7 +4,7 @@ A native [Omarchy](https://omarchy.org/) and Hyprland plugin that integrates [Co
 
 It provides a status bar widget, an interactive graphical topology visualizer inside a dedicated private workspace (`special:clab`), and customizable per-node application launching (terminals, SSH, Docker exec, or web browsers).
 
-![Containerlab Omarchy Plugin](https://raw.githubusercontent.com/srl-labs/containerlab/main/docs/images/logo.svg)
+![Containerlab Topology Workspace](assets/topology-view.png)
 
 ---
 
@@ -37,6 +37,8 @@ It provides a status bar widget, an interactive graphical topology visualizer in
     - Settings persist in `~/.config/omarchy/containerlab/settings.json`.
     - Auto-refresh protection prevents input overwrite while editing settings.
 
+  ![Containerlab Device Settings](assets/settings-view.png)
+
 - 📜 **Scrolling Layout Support (`SUPER + L`)**:
   - Toggle between Hyprland dwindle tiling and scrolling layouts directly within `special:clab` without affecting other workspaces.
 
@@ -57,52 +59,22 @@ It provides a status bar widget, an interactive graphical topology visualizer in
 
 ## Installation
 
-### Automatic Install (Recommended)
+Install directly using the native Omarchy plugin manager:
 
-Clone this repository and run the install script:
+```bash
+omarchy plugin add https://github.com/andywhitaker/omarchy-clab-workspace.git --enable
+```
+
+All Hyprland window rules, special workspace routing (`special:clab`), and keybindings are automatically managed at runtime by the plugin's background service (`ContainerlabService.qml`). **No manual edits to `~/.config/hypr/` are required.**
+
+### Local Development Setup
+
+To link and run the plugin from a local git clone:
 
 ```bash
 git clone https://github.com/andywhitaker/omarchy-clab-workspace.git ~/Projects/omarchy-clab-workspace
 cd ~/Projects/omarchy-clab-workspace
 ./install.sh
-```
-
-The install script automatically:
-1. Symlinks the plugin into `~/.config/omarchy/plugins/awhitaker.containerlab`.
-2. Validates the plugin manifest against the Omarchy schema.
-3. Installs the layout toggle helper to `~/.local/bin/omarchy-hyprland-workspace-layout-toggle`.
-4. Adds the necessary window rules to `~/.config/hypr/hyprland.lua`.
-5. Adds keybindings to `~/.config/hypr/bindings.lua`.
-6. Reloads Hyprland and enables the plugin in `omarchy-shell`.
-
----
-
-## Manual Configuration Details
-
-If you prefer to configure manually or customize the integration:
-
-### 1. Hyprland Window Rules (`~/.config/hypr/hyprland.lua`)
-
-```lua
--- Containerlab dedicated special workspace rules
-o.window({ class = "^org.quickshell$", title = "^Containerlab Workspace$" }, {
-  workspace = "special:clab",
-  float = true,
-  size = { 1280, 760 },
-  center = true
-})
-o.window({ class = "^org.omarchy.clab-terminal$" }, { workspace = "special:clab" })
-```
-
-### 2. Hyprland Keybindings (`~/.config/hypr/bindings.lua`)
-
-```lua
-o.bind("SUPER + ALT + C", "Toggle Containerlab topology", "python3 " .. os.getenv("HOME") .. "/.config/omarchy/plugins/awhitaker.containerlab/backend.py smart-toggle")
-o.bind("SUPER + ALT + SHIFT + C", "Toggle Containerlab workspace", hl.dsp.workspace.toggle_special("clab"))
-
--- Workspace layout toggle supporting special workspaces (e.g. special:clab)
-hl.unbind("SUPER + L")
-o.bind("SUPER + L", "Toggle workspace layout", os.getenv("HOME") .. "/.local/bin/omarchy-hyprland-workspace-layout-toggle")
 ```
 
 ---
@@ -111,16 +83,20 @@ o.bind("SUPER + L", "Toggle workspace layout", os.getenv("HOME") .. "/.local/bin
 
 ```
 omarchy-clab-workspace/
-├── manifest.json         # Omarchy plugin manifest (panel + bar-widget)
+├── assets/
+│   ├── topology-view.png # Topology visualizer screenshot
+│   └── settings-view.png # Device settings UI screenshot
+├── manifest.json         # Omarchy plugin manifest (panel + bar-widget + service)
 ├── BarWidget.qml         # Status bar widget displaying node count
 ├── Overlay.qml           # Floating window wrapper with tabs and title bar
 ├── WorkspaceView.qml     # Dynamic canvas visualizer for network topologies
 ├── SettingsView.qml      # Device launch application configuration UI
+├── ContainerlabService.qml # Dynamic Hyprland rules & keybindings service
 ├── backend.py            # Python engine: clab inspection, persistence, app launcher
 ├── bin/
 │   └── omarchy-hyprland-workspace-layout-toggle  # Special workspace layout switch
-├── install.sh            # Automated installer
-├── uninstall.sh          # Uninstaller / rollback script
+├── install.sh            # Developer symlink & validation script
+├── uninstall.sh          # Uninstaller & cleanup script
 └── README.md             # Documentation
 ```
 

@@ -1,21 +1,23 @@
 {
   "schemaVersion": 1,
-  "id": "awhitaker.containerlab",
-  "name": "Containerlab",
+  "id": "awhitaker.clab-workspace",
+  "name": "Containerlab Workspace",
   "version": "1.0.0",
   "author": "Andy Whitaker",
-  "description": "Containerlab topology manager, workspace canvas, and node launcher",
+  "description": "Containerlab topology visualizer, workspace canvas, and terminal launcher",
   "kinds": [
     "panel",
-    "bar-widget"
+    "bar-widget",
+    "service"
   ],
   "keepLoaded": true,
   "entryPoints": {
     "panel": "Overlay.qml",
-    "barWidget": "BarWidget.qml"
+    "barWidget": "BarWidget.qml",
+    "service": "ContainerlabService.qml"
   },
   "barWidget": {
-    "displayName": "Containerlab",
+    "displayName": "Containerlab Workspace",
     "description": "Shows active Containerlab topologies and toggles the private workspace",
     "category": "Development",
     "allowMultiple": false,

@@ -6,12 +6,19 @@ import qs.Ui
 
 BarWidget {
     id: root
-    moduleName: "awhitaker.containerlab"
+    moduleName: "awhitaker.clab-workspace"
 
     implicitWidth: widgetBtn.implicitWidth
     implicitHeight: widgetBtn.implicitHeight
 
-    property string pluginDir: Quickshell.env("HOME") + "/.config/omarchy/plugins/awhitaker.containerlab"
+    readonly property string pluginDir: {
+        var base = Qt.resolvedUrl(".").toString();
+        base = base.replace(/^file:\/\//, "");
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length - 1);
+        }
+        return base || (Quickshell.env("HOME") + "/.config/omarchy/plugins/awhitaker.clab-workspace");
+    }
     property string backendScript: pluginDir + "/backend.py"
 
     property int topologyCount: 0
