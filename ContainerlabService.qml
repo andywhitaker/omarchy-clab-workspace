@@ -8,7 +8,6 @@ Item {
     // Injected by Omarchy shell
     property var shell: null
     property var manifest: null
-    property string omarchyPath: ""
 
     // Resolved plugin path on disk
     readonly property string pluginDir: {

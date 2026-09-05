@@ -69,12 +69,13 @@ All Hyprland window rules, special workspace routing (`special:clab`), and keybi
 
 ### Local Development Setup
 
-To link and run the plugin from a local git clone:
+To link and run the plugin directly from a local git clone:
 
 ```bash
 git clone https://github.com/andywhitaker/omarchy-clab-workspace.git ~/Projects/omarchy-clab-workspace
-cd ~/Projects/omarchy-clab-workspace
-./install.sh
+ln -s ~/Projects/omarchy-clab-workspace ~/.config/omarchy/plugins/awhitaker.clab-workspace
+omarchy-shell shell rescanPlugins
+omarchy plugin enable awhitaker.clab-workspace
 ```
 
 ---
@@ -95,8 +96,6 @@ omarchy-clab-workspace/
 ├── backend.py            # Python engine: clab inspection, persistence, app launcher
 ├── bin/
 │   └── omarchy-hyprland-workspace-layout-toggle  # Special workspace layout switch
-├── install.sh            # Developer symlink & validation script
-├── uninstall.sh          # Uninstaller & cleanup script
 └── README.md             # Documentation
 ```
 

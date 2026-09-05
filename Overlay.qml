@@ -61,14 +61,6 @@ Item {
         }
     }
 
-    function toggle() {
-        if (window.visible) {
-            requestClose();
-        } else {
-            open("{}");
-        }
-    }
-
     Component.onCompleted: {
         refreshTopologies();
     }
