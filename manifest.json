@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "awhitaker.containerlab",
+  "name": "Containerlab",
+  "version": "1.0.0",
+  "author": "Andy Whitaker",
+  "description": "Containerlab topology manager, workspace canvas, and node launcher",
+  "kinds": [
+    "panel",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Overlay.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Containerlab",
+    "description": "Shows active Containerlab topologies and toggles the private workspace",
+    "category": "Development",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

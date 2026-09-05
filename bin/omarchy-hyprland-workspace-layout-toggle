@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# omarchy:summary=Toggle the layout on the current active workspace (including special workspaces) between dwindle and scrolling
+
+LAYOUTS_DIR="$HOME/.local/state/omarchy/workspace-layouts"
+mkdir -p "$LAYOUTS_DIR"
+
+# 1. Inspect focused monitor and active windows
+FOCUSED_MONITOR=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true)')
+SPECIAL_NAME=$(echo "$FOCUSED_MONITOR" | jq -r '.specialWorkspace.name // empty')
+SPECIAL_ID=$(echo "$FOCUSED_MONITOR" | jq -r '.specialWorkspace.id // 0')
+
+if [[ -n "$SPECIAL_NAME" && "$SPECIAL_ID" != "0" ]]; then
+  TARGET_WORKSPACE="$SPECIAL_NAME"
+  SAFE_NAME=$(echo "$SPECIAL_NAME" | sed 's/[:\/]/_/g')
+  LAYOUT_FILE="$LAYOUTS_DIR/${SAFE_NAME}.lua"
+  CURRENT_LAYOUT=$(hyprctl workspaces -j | jq -r --arg id "$SPECIAL_ID" '.[] | select(.id == ($id | tonumber)) | .tiledLayout // empty')
+  DISPLAY_NAME="${SPECIAL_NAME#special:}"
+else
+  ACTIVE_WORKSPACE=$(echo "$FOCUSED_MONITOR" | jq -r '.activeWorkspace.id // empty')
+  [[ -z "$ACTIVE_WORKSPACE" ]] && ACTIVE_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.id')
+  [[ $ACTIVE_WORKSPACE =~ ^-?[0-9]+$ ]] || exit 1
+  TARGET_WORKSPACE="$ACTIVE_WORKSPACE"
+  LAYOUT_FILE="$LAYOUTS_DIR/$ACTIVE_WORKSPACE.lua"
+  CURRENT_LAYOUT=$(hyprctl activeworkspace -j | jq -r '.tiledLayout // empty')
+  DISPLAY_NAME="$ACTIVE_WORKSPACE"
+fi
+
+case "$CURRENT_LAYOUT" in
+  scrolling) NEW_LAYOUT=dwindle ;;
+  *) NEW_LAYOUT=scrolling ;;
+esac
+
+printf 'hl.workspace_rule({ workspace = "%s", layout = "%s" })\n' "$TARGET_WORKSPACE" "$NEW_LAYOUT" >"$LAYOUT_FILE"
+
+hyprctl eval "hl.workspace_rule({ workspace = \"$TARGET_WORKSPACE\", layout = \"$NEW_LAYOUT\" })" >/dev/null 2>&1 || \
+  hyprctl keyword workspace "$TARGET_WORKSPACE, layout:$NEW_LAYOUT"
+
+omarchy-notification-send -g 󱂬 "Workspace $DISPLAY_NAME layout set to $NEW_LAYOUT"
