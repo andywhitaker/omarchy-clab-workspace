@@ -8,7 +8,20 @@ Item {
 
     property var topology: null
     property string hoveredNode: ""
-    signal launchRequested(var node)
+    property bool shiftHeld: false
+    signal launchRequested(var node, bool grouped)
+
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Shift) {
+            root.shiftHeld = true;
+        }
+    }
+    Keys.onReleased: function(event) {
+        if (event.key === Qt.Key_Shift) {
+            root.shiftHeld = false;
+        }
+    }
 
     // Node coordinate mapper
     function getNodePos(nodeName) {
@@ -295,7 +308,16 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onEntered: root.hoveredNode = modelData.name
                             onExited: if (root.hoveredNode === modelData.name) root.hoveredNode = ""
-                            onClicked: root.launchRequested(modelData)
+                            onPressed: function(mouse) {
+                                if ((mouse.modifiers & Qt.ShiftModifier) !== 0) {
+                                    root.shiftHeld = true;
+                                }
+                            }
+                            onClicked: function(mouse) {
+                                var isShift = ((mouse.modifiers & Qt.ShiftModifier) !== 0) || root.shiftHeld;
+                                root.shiftHeld = false;
+                                root.launchRequested(modelData, isShift);
+                            }
                         }
                     }
                 }

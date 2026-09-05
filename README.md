@@ -23,7 +23,8 @@ It provides a status bar widget, an interactive graphical topology visualizer in
   - Renders the network topology graph dynamically based on Containerlab YAML files and `.annotations.yaml` coordinates.
   - Displays interconnecting links between nodes and real-time running/stopped status badges.
   - Stays as a floating window centered on top of open terminal windows.
-  - Click any node to instantly launch its configured application.
+  - **Left-click**: Instantly launches the node's shell as a standalone terminal titled with the node name.
+  - **`SHIFT + Left-click`**: Opens the shell in Hyprland **grouped mode** (as a tab) in the last shell opened or active in the workspace, with each tab titled with the node name.
 
 - ⚙️ **Per-Node Application Launcher & Settings**:
   - Automatic defaults based on device type:
@@ -41,10 +42,12 @@ It provides a status bar widget, an interactive graphical topology visualizer in
 
 ---
 
-## Keybindings
+## Keybindings & Interactions
 
-| Shortcut | Action |
+| Shortcut / Interaction | Action |
 | :--- | :--- |
+| **`Click`** *(on node)* | Launch node application in a new standalone window |
+| **`SHIFT + Click`** *(on node)* | Open node shell in **grouped mode (tabs)** inside last active shell |
 | **`SUPER + ALT + C`** | **Smart toggle Containerlab**: Shows/hides floating topology window |
 | **`SUPER + ALT + SHIFT + C`** | Toggle `special:clab` workspace visibility |
 | **`SUPER + L`** | Toggle workspace layout (dwindle ↔ scrolling) on current workspace |

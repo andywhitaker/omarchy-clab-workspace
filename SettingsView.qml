@@ -7,8 +7,21 @@ Item {
     id: root
 
     property var topology: null
+    property bool shiftHeld: false
     signal saveRequested(var settingsMap)
-    signal launchRequested(var node)
+    signal launchRequested(var node, bool grouped)
+
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Shift) {
+            root.shiftHeld = true;
+        }
+    }
+    Keys.onReleased: function(event) {
+        if (event.key === Qt.Key_Shift) {
+            root.shiftHeld = false;
+        }
+    }
 
     ListModel {
         id: deviceModel
@@ -411,13 +424,20 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
+                                    onPressed: function(mouse) {
+                                        if ((mouse.modifiers & Qt.ShiftModifier) !== 0) {
+                                            root.shiftHeld = true;
+                                        }
+                                    }
+                                    onClicked: function(mouse) {
+                                        var isShift = ((mouse.modifiers & Qt.ShiftModifier) !== 0) || root.shiftHeld;
+                                        root.shiftHeld = false;
                                         root.launchRequested({
                                             name: model.name,
                                             app: model.app,
                                             command: model.command,
                                             url: model.url
-                                        });
+                                        }, isShift);
                                     }
                                 }
                             }

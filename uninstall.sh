@@ -31,7 +31,14 @@ if [ -f "$BINDINGS_LUA" ]; then
     echo "✓ Cleaned keybindings from $BINDINGS_LUA"
 fi
 
-# 5. Reload Hyprland and rescan plugins
+# 5. Remove layout toggle helper script
+BIN_DIR="$HOME/.local/bin"
+if [ -f "$BIN_DIR/omarchy-hyprland-workspace-layout-toggle" ]; then
+    rm -f "$BIN_DIR/omarchy-hyprland-workspace-layout-toggle"
+    echo "✓ Removed $BIN_DIR/omarchy-hyprland-workspace-layout-toggle"
+fi
+
+# 6. Reload Hyprland and rescan plugins
 hyprctl reload >/dev/null 2>&1 || true
 omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
 echo "✓ Reloaded Hyprland and Omarchy shell"

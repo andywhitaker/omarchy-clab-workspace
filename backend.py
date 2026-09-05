@@ -4,7 +4,7 @@ Backend helper script for Omarchy Containerlab plugin.
 Provides subcommands:
   - get-topologies: Discovers running topologies, node annotations, links, and merged settings.
   - save-settings <json_str>: Saves per-node application settings.
-  - launch --app <terminal|browser> --target <command|url>: Launches the configured action.
+  - launch --app <terminal|browser> --target <command|url> [--name <name>] [--grouped]: Launches the configured action.
 """
 
 import sys
@@ -14,6 +14,7 @@ import subprocess
 import shutil
 import re
 import shlex
+import time
 
 SETTINGS_DIR = os.path.expanduser("~/.config/omarchy/containerlab")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
@@ -253,29 +254,219 @@ def get_topologies():
         "active_topology": active_name
     }
 
-def launch(app_type, target):
+def get_clab_clients():
+    try:
+        proc = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True, timeout=2)
+        if proc.returncode == 0:
+            clients = json.loads(proc.stdout)
+            return [
+                c for c in clients
+                if c.get("workspace", {}).get("name") == "special:clab"
+                and (
+                    c.get("class") == "org.omarchy.clab-terminal"
+                    or c.get("initialClass") == "org.omarchy.clab-terminal"
+                )
+            ]
+    except Exception:
+        pass
+    return []
+
+
+def launch(app_type, target, name="", grouped=False):
     if not target:
         return {"status": "error", "message": "Target is empty"}
 
     if app_type == "terminal":
+        sys.stderr.write(f"Containerlab launch: name={name}, grouped={grouped}, target={target}\n")
+        sys.stderr.flush()
+
+        # Format command to set window/tab title to the node name
+        if name:
+            escaped_name = name.replace("'", "'\\''")
+            bash_cmd = f"printf '\\033]0;%s\\007' '{escaped_name}'; {target}"
+        else:
+            bash_cmd = target
+
+        # Capture initial cursor position to guarantee mouse never moves
+        cur_pos = None
+        try:
+            c_out = subprocess.check_output(["hyprctl", "cursorpos"], text=True, timeout=0.5).strip()
+            parts = [int(p.strip()) for p in c_out.split(",")]
+            if len(parts) == 2:
+                cur_pos = parts
+        except Exception:
+            pass
+
+        clab_clients = get_clab_clients()
+        target_client = None
+        if clab_clients:
+            # Sort candidates by focusHistoryID ascending (0 is most recently active shell)
+            clab_clients.sort(key=lambda c: c.get("focusHistoryID", 999999))
+            target_client = clab_clients[0]
+
+        if grouped and target_client:
+            target_addr = target_client.get("address")
+            is_already_grouped = bool(target_client.get("grouped"))
+
+            # Pre-configure compositor: cursor no_warps, follow_mouse = 0, auto_group = true
+            subprocess.run([
+                "hyprctl", "eval",
+                "hl.config({ cursor = { no_warps = true }, input = { follow_mouse = 0 }, group = { auto_group = true } })"
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+            # Ensure target_client is in a group BEFORE spawning
+            if not is_already_grouped:
+                subprocess.run(["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{target_addr}" }})'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                for _ in range(25):
+                    time.sleep(0.01)
+                    try:
+                        act_out = subprocess.check_output(["hyprctl", "activewindow", "-j"], text=True, timeout=0.2)
+                        act = json.loads(act_out)
+                        if act.get("address") == target_addr:
+                            break
+                    except Exception:
+                        pass
+                subprocess.run(["hyprctl", "dispatch", "hl.dsp.group.toggle()"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                for _ in range(25):
+                    time.sleep(0.01)
+                    chk = get_clab_clients()
+                    cur_t = next((c for c in chk if c.get("address") == target_addr), None)
+                    if cur_t and cur_t.get("grouped"):
+                        break
+
+            # Focus target_addr so the new window groups onto it
+            subprocess.run(["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{target_addr}" }})'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+        else:
+            # Standalone launch: disable auto_group so it is not added to an existing group
+            subprocess.run([
+                "hyprctl", "eval",
+                "hl.config({ group = { auto_group = false }, cursor = { no_warps = true } })"
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+        existing_addrs = {c.get("address") for c in clab_clients}
+
         # Launch terminal with command inside special:clab
         if shutil.which("ghostty"):
-            subprocess.Popen([
-                "ghostty",
-                "--class=org.omarchy.clab-terminal",
-                "-e", "bash", "-c", target
-            ], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cmd = ["ghostty", "--class=org.omarchy.clab-terminal"]
+            if name:
+                cmd.append(f"--title={name}")
+            cmd.extend(["-e", "bash", "-c", bash_cmd])
+            subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         elif shutil.which("xdg-terminal-exec"):
-            subprocess.Popen([
-                "xdg-terminal-exec",
-                "--app-id=org.omarchy.clab-terminal",
-                "bash", "-c", target
-            ], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cmd = ["xdg-terminal-exec", "--app-id=org.omarchy.clab-terminal"]
+            if name:
+                cmd.append(f"--title={name}")
+            cmd.extend(["bash", "-c", bash_cmd])
+            subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         elif shutil.which("omarchy-launch-terminal"):
-            subprocess.Popen(["omarchy-launch-terminal", "bash", "-c", target], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cmd = ["omarchy-launch-terminal"]
+            if name:
+                cmd.extend(["--title", name])
+            cmd.extend(["bash", "-c", bash_cmd])
+            subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.Popen(["x-terminal-emulator", "-e", "bash", "-c", target], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return {"status": "ok", "app": "terminal", "target": target}
+            cmd = ["x-terminal-emulator"]
+            if name:
+                cmd.extend(["-T", name])
+            cmd.extend(["-e", "bash", "-c", bash_cmd])
+            subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Fast poll for the newly spawned window to appear in Hyprland
+        new_client = None
+        for _ in range(150):
+            time.sleep(0.01)
+            current = get_clab_clients()
+            for c in current:
+                if c.get("address") not in existing_addrs:
+                    new_client = c
+                    break
+            if new_client:
+                break
+
+        if grouped and target_client and new_client:
+            target_addr = target_client.get("address")
+            new_addr = new_client.get("address")
+            new_grouped = new_client.get("grouped", [])
+            if target_addr not in new_grouped:
+                # If new_client accidentally joined the wrong group, move out first
+                if new_grouped:
+                    subprocess.run(["hyprctl", "--batch",
+                        f'dispatch hl.dsp.focus({{ window = "address:{new_addr}" }}); '
+                        'dispatch hl.dsp.window.move({ out_of_group = true })'
+                    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                    time.sleep(0.02)
+
+                # Ensure target_addr is in a group
+                cur_clab = get_clab_clients()
+                t_cli = next((c for c in cur_clab if c.get("address") == target_addr), None)
+                if t_cli and not t_cli.get("grouped"):
+                    subprocess.run(["hyprctl", "--batch",
+                        f'dispatch hl.dsp.focus({{ window = "address:{target_addr}" }}); '
+                        'dispatch hl.dsp.group.toggle()'
+                    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                    time.sleep(0.02)
+
+                t_at = target_client.get("at", [0, 0])
+                n_at = new_client.get("at", [0, 0])
+                dx = t_at[0] - n_at[0]
+                dy = t_at[1] - n_at[1]
+                if abs(dx) >= abs(dy):
+                    primary_dir = "l" if dx < 0 else "r"
+                else:
+                    primary_dir = "u" if dy < 0 else "d"
+
+                dirs = [primary_dir]
+                for d in ["l", "r", "u", "d", "left", "right", "up", "down"]:
+                    if d not in dirs:
+                        dirs.append(d)
+
+                for d in dirs:
+                    subprocess.run(["hyprctl", "--batch",
+                        f'dispatch hl.dsp.focus({{ window = "address:{new_addr}" }}); '
+                        f'dispatch hl.dsp.window.move({{ into_group = "{d}" }})'
+                    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                    time.sleep(0.02)
+                    chk = get_clab_clients()
+                    updated = next((c for c in chk if c.get("address") == new_addr), None)
+                    if updated and target_addr in updated.get("grouped", []):
+                        break
+                    elif updated and updated.get("grouped") and target_addr not in updated.get("grouped"):
+                        # Joined wrong group, move out before trying next direction
+                        subprocess.run(["hyprctl", "--batch",
+                            f'dispatch hl.dsp.focus({{ window = "address:{new_addr}" }}); '
+                            'dispatch hl.dsp.window.move({ out_of_group = true })'
+                        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                        time.sleep(0.02)
+        elif not grouped and new_client:
+            # Standalone launch safeguard: if new client ended up in a group, move it out
+            if new_client.get("grouped"):
+                new_addr = new_client.get("address")
+                subprocess.run(["hyprctl", "--batch",
+                    f'dispatch hl.dsp.focus({{ window = "address:{new_addr}" }}); '
+                    'dispatch hl.dsp.window.move({ out_of_group = true })'
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+        # Focus handling:
+        # If launched in grouped mode, keep the original tab (target_client) as the primary focused tab
+        # If launched standalone, focus the newly spawned window so it becomes active
+        if grouped and target_client:
+            target_addr = target_client.get("address")
+            subprocess.run(["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{target_addr}" }})'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+        elif new_client:
+            new_addr = new_client.get("address")
+            subprocess.run(["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{new_addr}" }})'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+        # Always restore follow_mouse = 1, auto_group = true, cursor no_warps = false, and restore cursor position
+        restore_parts = [
+            "eval hl.config({ input = { follow_mouse = 1 }, group = { auto_group = true }, cursor = { no_warps = false } })"
+        ]
+        if cur_pos:
+            restore_parts.append(f"dispatch hl.dsp.cursor.move({{ x = {cur_pos[0]}, y = {cur_pos[1]} }})")
+        subprocess.run(["hyprctl", "--batch", "; ".join(restore_parts)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+
+        return {"status": "ok", "app": "terminal", "target": target, "grouped": bool(grouped and target_client)}
+
+
 
     elif app_type == "browser":
         # Launch web browser
@@ -375,9 +566,11 @@ def main():
             print(json.dumps({"status": "error", "message": str(e)}))
 
     elif cmd == "launch":
-        # Parse --app and --target
+        # Parse --app, --target, --name, --grouped
         app_type = "terminal"
         target = ""
+        name = ""
+        grouped = False
         i = 2
         while i < len(sys.argv):
             if sys.argv[i] == "--app" and i + 1 < len(sys.argv):
@@ -386,9 +579,15 @@ def main():
             elif sys.argv[i] == "--target" and i + 1 < len(sys.argv):
                 target = sys.argv[i+1]
                 i += 2
+            elif sys.argv[i] == "--name" and i + 1 < len(sys.argv):
+                name = sys.argv[i+1]
+                i += 2
+            elif sys.argv[i] == "--grouped":
+                grouped = True
+                i += 1
             else:
                 i += 1
-        result = launch(app_type, target)
+        result = launch(app_type, target, name=name, grouped=grouped)
         print(json.dumps(result))
 
     elif cmd == "smart-toggle":

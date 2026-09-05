@@ -24,6 +24,7 @@ Item {
         ? topologies[activeTopoIndex]
         : null
 
+    property bool shiftHeld: false
     property string toastMessage: ""
 
     // Lifecycle methods
@@ -85,15 +86,21 @@ Item {
         toastTimer.restart();
     }
 
-    function launchNode(node) {
+    function launchNode(node, grouped) {
+        root.shiftHeld = false;
         if (!node) return;
         var target = (node.app === "browser") ? (node.url || node.default_url) : (node.command || node.default_command);
         if (!target) {
             showToast("No command or URL specified for " + node.name);
             return;
         }
-        Quickshell.execDetached(["python3", root.backendScript, "launch", "--app", node.app, "--target", target]);
-        showToast("Launched " + node.name + " (" + (node.app === "browser" ? "Browser" : "Terminal") + ")");
+        var cmd = ["python3", root.backendScript, "launch", "--app", node.app, "--target", target, "--name", node.name];
+        if (grouped) {
+            cmd.push("--grouped");
+        }
+        Quickshell.execDetached(cmd);
+        var toastDesc = (node.app === "browser") ? "Browser" : (grouped ? "Terminal (Grouped)" : "Terminal");
+        showToast("Launched " + node.name + " (" + toastDesc + ")");
     }
 
     function saveSettings(settingsMap) {
@@ -168,9 +175,17 @@ Item {
 
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Shift) {
+                        root.shiftHeld = true;
+                    }
                     if (event.key === Qt.Key_Escape) {
                         root.requestClose();
                         event.accepted = true;
+                    }
+                }
+                Keys.onReleased: function(event) {
+                    if (event.key === Qt.Key_Shift) {
+                        root.shiftHeld = false;
                     }
                 }
 
@@ -407,8 +422,9 @@ Item {
                             anchors.fill: parent
                             visible: root.currentTab === "workspace"
                             topology: root.currentTopology
-                            onLaunchRequested: function(node) {
-                                root.launchNode(node);
+                            shiftHeld: root.shiftHeld
+                            onLaunchRequested: function(node, grouped) {
+                                root.launchNode(node, grouped);
                             }
                         }
 
@@ -418,11 +434,12 @@ Item {
                             anchors.fill: parent
                             visible: root.currentTab === "settings"
                             topology: root.currentTopology
+                            shiftHeld: root.shiftHeld
                             onSaveRequested: function(map) {
                                 root.saveSettings(map);
                             }
-                            onLaunchRequested: function(node) {
-                                root.launchNode(node);
+                            onLaunchRequested: function(node, grouped) {
+                                root.launchNode(node, grouped);
                             }
                         }
 
